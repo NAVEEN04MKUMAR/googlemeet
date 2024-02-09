@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+
+    Hello world
+    <h2>Chats with upvotes more than 2:</h2>
+  <ul id="moreThanTwoUpvotes"></ul>
+  
+  <h2>Chats with upvotes less than or equal to 2:</h2>
+  <ul id="lessThanOrEqualTwoUpvotes"></ul>
+    </script> 
+    <div id="chatbox"></div>    
+    <div id="chatmessages"></div>
+    <input type="text" id="messageinput" placeholder="Type your message">
+    <button onclick="sendmessage()">Send Message</button>
+    <button onclick="upvotemessage()">upvote Chat</button>
+    <button id="upvotebutton" onclick="upvotemessage()">Upvote</button>
+    <span id="upvote-count">0</span>
+
+    <!-- <script type="module" src="./script.js"></script> -->
+    <script>
+console.log('Script.js loaded.');
+const ws = new WebSocket("ws://localhost:8000", "echo-protocol");
+
+ws.onopen = function () { 
+  // Connection opened
+  console.log("WebSocket connection opened");
+};
+
+
+ 
+
+
+
+
+ws.onmessage = function (event) {
+//  const data = JSON.parse(event.data);
+ try{
+  // Parse the JSON message received from the server
+        const data = JSON.parse(event.data);
+        console.log("Received message from server:", data);
+
+   
+
+        // Check if the message contains valid JSON
+        if (data.type === 'sendmessage') { 
+        console.log("Received message payload:", data.payload);
+              console.log("Chat ID:", data.payload.chatid);
+
+            // Send acknowledgment back to the server
+      ws.send(JSON.stringify({
+        type: 'acknowledgment',
+        payload: {
+          messageId: data.messageId, // Assuming messageId is sent from the server
+          status: 'success',
+          message: 'Message received successfully',
+        },
+      }));
+      console.log("renderchatmessage", data.payload.userid,data.payload.message,data.payload.chatid,data.payload.username);
+                  // Assuming data is an object with properties userid, message, and chatid
+const datas = {
+  payload: {
+    name: data.payload.userid,
+    message: data.payload.message,
+    upvotes: 0,
+    chatid: data.payload.chatid,
+    username:data.payload.username,
+  }
+};
+                  renderChatMessage( datas);
+      } 
+            else if(data.type === 'chats_with_more_than_two_upvotes') {
+    const chatsWithMoreThanTwoUpvotes = data.payload;
+    // Process chatsWithMoreThanTwoUpvotes as needed
+  }
+  else if(data.type === 'chats_with_less_than_or_equal_to_two_upvotes') {
+    const chatsWithLessThanOrEqualTwoUpvotes = data.payload;
+    // Process chatsWithLessThanOrEqualTwoUpvotes as needed
+  }
+else if(data.type === 'updatechat')  {
+    // Handle incoming messages from the server
+    const message = JSON.parse(event.data);
+    // Check if the incoming message is an updatechat response
+    if (message.type === 'updatechat') {
+        // Update the upvote count in the UI
+        const upvoteCountElement = document.getElementById('upvote-count');
+        upvoteCountElement.textContent = message.payload.upvotes.toString();
+    }
+
+      // console.log("Unhandled message type:", data.type);
+    }
+
+  } catch (error) {
+     console.error("Error parsing JSON. Received data:", event.data);
+    console.log("Error parsing JSON:", error);
+    // Send acknowledgment with error back to the server
+    ws.send(JSON.stringify({
+      type: 'acknowledgment',
+      payload: {
+        status: 'error',
+        error: 'Error parsing JSON',
+      },
+    }));
+  };
+
+
+}
+
+ // Function to handle incoming messages
+    function handleIncomingMessage(message) {
+
+      var startindex=message.indexOf('{');
+      var endindex=message.indexOf('}');
+
+if(startindex!==-1&&endindex!==-1){
+  try{
+      var payload = JSON.parse(message);
+        // Assuming the payload structure is similar to the one you provided
+        var messageType = payload.type;
+        var messageContent = payload.payload.message;
+        if (messageType === "sendmessage") {
+            displaymessage(messageContent, false); // false indicates it's an incoming message
+        }
+  }catch{
+    console.log("error parsing JSON",error);
+  }   
+}else{
+console.log("invalid message format",message)
+}
+    }
+
+   
+
+
+function sendmessage() {
+  const messageInput = document.getElementById("messageinput");
+  const message = messageInput.value.trim();
+
+  if(!message.trim()!==""){
+  displaymessage(message,true);
+  messageInput.value="";
+}
+ function displaymessage(message,outgoing){
+  var chatbox=document.getElementById("chatbox");
+  var messageclass=outgoing?"outgoingmessage":"incomingmessage"
+  var messagelement=document.createElement("div");
+
+  messagelement.className=messageclass;
+  messagelement.textcontent=message;
+  chatbox.appendChild(messagelement);
+  chatbox.scrolltop=chatbox.scrollHeight;
+   console.log("Displayed message:", message);
+ }
+const chatid = Date.now().toString();
+const username="naveen";
+  if (message !== "") {
+    // Send a message to the server
+    ws.send(JSON.stringify({
+      type: "sendmessage",
+      payload: {
+        username: username,
+        message: message,
+        userid: "naveen123",
+        roomid: "room123",
+        chatid: chatid,
+      },
+    }));
+
+    // Clear the input field
+    messageInput.value = "";
+  }
+}
+
+
+function renderChatMessage(message) {
+    console.log('Rendering chat message:', message);
+  const chatMessagesContainer = document.getElementById('chatmessages');
+  const messageElement = document.createElement('div');
+
+
+  if (message.payload && message.payload.name && message.payload.message && message.payload.upvotes !== undefined&&message.payload.username!==null) {
+    messageElement.innerHTML = `<p>${message.payload.name}: ${message.payload.message}, Upvotes: ${message.payload.upvotes},${message.payload.username}: ${message.payload.username}</p>`;
+  } else {
+    console.error('Invalid message payload:', message);
+    return;
+  }
+     messageElement.id = `message-${message.id}`;
+  messageElement.classList.add('chat-message');
+
+  const upvoteButton = document.createElement('button');
+  upvoteButton.textContent = 'upvote';
+  upvoteButton.id = `upvote-${message.id}`;
+  upvoteButton.onclick = () => upvotemessage(message.payload.chatid,message.payload.username);
+  
+  const upvoteCountElement = document.createElement('span');
+  upvoteCountElement.classList.add('upvote-count');
+  upvoteCountElement.textContent = '0'; 
+  messageElement.appendChild(upvoteButton);
+  messageElement.appendChild(upvoteCountElement);
+  chatMessagesContainer.appendChild(messageElement);
+}
+
+
+function upvotemessage(chatid,username){
+   console.log('Upvoting message with chatId:', chatid,username);
+     
+  // Send an upvote message to the server
+  ws.send(JSON.stringify({
+    type: "upvotemessage",
+    payload: {
+      userid: "naveen123", 
+      roomid: "room123",
+      chatid: chatid,
+      username:username,
+        },
+  }));
+
+}
+
+
+
+
+function updatechatmessages(payload) {
+  const chatMessagesDiv = document.getElementById("chatmessages");
+  const messageDiv = document.createElement("div");
+
+   if (payload.type === "sendmessage") {
+    // Render sent message
+    messageDiv.textContent = `You: ${payload.message}`;
+  } else if (payload.type === "addchat" || payload.type === "updatechat") {
+    // Render received message
+    messageDiv.textContent = `Name: ${payload.name}, Message: ${payload.message}, Upvotes: ${payload.upvotes}`;
+  }
+  chatMessagesDiv.appendChild(messageDiv);
+
+  // Add the new message to the chatMessages array for tracking
+  chatmessages.push({
+    id: payload.chatid,
+    content: payload.message,
+    upvotes: payload.upvotes,
+  });
+}
+  
+  const chatmessages = []; 
+
+  // Function to render chats in a list
+    function renderChats(chats, elementId) {
+      const listElement = document.getElementById(elementId);
+      chats.forEach(chat => {
+        const listItem = document.createElement('li');
+        listItem.textContent = `User: ${chat.username}, Message: ${chat.message}, Upvotes: ${chat.upvotes.length}`;
+        listElement.appendChild(listItem);
+      });
+    }
+
+    // // Render chats with more than 2 upvotes
+    // renderChats(chatsWithMoreThanTwoUpvotes, 'moreThanTwoUpvotes');
+
+    // // Render chats with less than or equal to 2 upvotes
+    // renderChats(chatsWithLessThanOrEqualTwoUpvotes, 'lessThanOrEqualTwoUpvotes');
+
+
+
+  // Find the corresponding message element in the UI
+//   const messageElement = document.getElementById(`message-${chatId}`);
+  
+//   // Update the UI to reflect the upvote
+//   if (messageElement) {
+//     const upvoteCountElement = messageElement.querySelector(".upvote-count");
+//     const currentUpvotes = parseInt(upvoteCountElement.textContent);
+//     upvoteCountElement.textContent = currentUpvotes + 1;
+//   }
+
+// function upvotemessage() {
+//   // Find the ID of the last message and upvote it
+//   const lastmessage = chatmessages[chatmessages.length - 1];
+//   if (lastmessage) {
+//     ws.send(JSON.stringify({
+//       type: "upvotemessage",
+//       payload: {
+//         userid: "naveen123",
+//         roomid: "room123",
+//         chatid: lastmessage.id,
+//       },
+//     }));
+//   }
+// }
+
+
+    </script>
+
+<!-- //   <script type="module" src="./src/store/Ismemorystore.js"></script>
+//    <script type="module" src="./main1.js"></script> -->
+</body>
+</html>
